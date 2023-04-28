@@ -1,0 +1,12 @@
+cmake_minimum_required(VERSION 3.10)
+project(h2ok)
+
+set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
+set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
+include_directories("./")
+add_subdirectory("test")
+add_compile_definitions(H2OK_BUILD_MODE)
+set(H2OK_BUILD_MODE = 1)
+add_library(h2ok SHARED "h2ok.cc")
+set(H2OK_BUILD_MODE = 0)
