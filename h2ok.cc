@@ -6,8 +6,8 @@
 
 struct H2OKRunHookCallbackRegistrar_Internal : public H2OKRunHookCallbackRegistrar {
     PH2OKContext GlobalContext;
+    bool IsRunning=false;
     std::list<H2OKRunHookCallback> callbacks;
-
     static H2OKRunHookCallbackRegistrar* GlobalRegistrar;
 };
 
@@ -26,7 +26,7 @@ struct H2OKContext_Platform_Win32 : public H2OKContext {
 
 #define X11_CODE(code)
 
-
+ 
 #else
 #include <X11/Xlib.h>
 
@@ -46,15 +46,40 @@ struct GlobalContext {
 
 PH2OKContext GlobalContext::context = nullptr;
 
+
+
+
+
+
 H2OK_API H2OKResult CreateContext(LPH2OKContext context){
-
-
 
 	//Win32 specific code
     WIN32_CODE(
         //Creating Mouse Hook
         HHOOK hMouseHook = SetWindowsHookEx(WH_MOUSE_LL, [](int nCode, WPARAM wParam, LPARAM lParam)->LRESULT CALLBACK {
+
+
+            H2OKRunHookCallbackRegistrar* registrar=nullptr;
+            if (H2OKFAILED(GetDefaultH2OKRunHookCallbackRegistrar(&registrar))) {
+                PostQuitMessage(H2OKRESULT_FAILURE);
+            }
             
+            if (H2OKNULL(registrar)) PostQuitMessage(H2OKRESULT_FAILURE);
+
+
+            auto InternalRegistrar = reinterpret_cast<H2OKRunHookCallbackRegistrar_Internal*>(registrar);
+
+
+            if (H2OKNULL(InternalRegistrar->GlobalContext)) PostQuitMessage(H2OKRESULT_FAILURE);
+
+            auto ctxt = reinterpret_cast<H2OKContext_Platform_Win32*>(InternalRegistrar->GlobalContext);
+
+
+            for (H2OKRunHookCallback callback : InternalRegistrar->callbacks) {
+                if (H2OKNULL(callback))  PostQuitMessage(H2OKRESULT_FAILURE);
+                callback(InternalRegistrar->GlobalContext);
+            }
+
             // Call the next hook in the chain
             return CallNextHookEx(NULL, nCode, wParam, lParam);
         }, GetModuleHandle(NULL), 0);
@@ -95,39 +120,50 @@ H2OK_API H2OKResult CreateContext(LPH2OKContext context){
 	return H2OKRESULT_SUCCESS;
 }
 
-H2OK_API H2OKResult DestroyContext(PH2OKContext context) {
 
-    std::cout << "Deleting Context!" << std::endl;
 
+
+
+
+
+
+H2OK_API H2OKResult DestroyContext(PH2OKRunHookCallbackRegistrar pRegistrar) {
+
+    auto InternalRegistrar = reinterpret_cast<H2OKRunHookCallbackRegistrar_Internal*>(pRegistrar);
     //Check if context is null or not initialized or already destroyed
-    if (H2OKNULL(context)) return H2OKRESULT_FAILURE;
+    if (H2OKNULL(InternalRegistrar->GlobalContext)) return H2OKRESULT_FAILURE;
 
     WIN32_CODE(
-        H2OKContext_Platform_Win32 * ctx = reinterpret_cast<H2OKContext_Platform_Win32*>(context);
-        SetEvent(ctx->InterruptEventHandle);
+        H2OKContext_Platform_Win32 * ctx = reinterpret_cast<H2OKContext_Platform_Win32*>(InternalRegistrar->GlobalContext);
+        PostQuitMessage(H2OKRESULT_SUCCESS);
         UnhookWindowsHookEx(ctx->MouseHook);
         CloseHandle(ctx->InterruptEventHandle);
     );
+    //delete[] InternalRegistrar->GlobalContext;
 
-
-    delete[] context;
+    //InternalRegistrar->GlobalContext = NULL;
 
     return H2OKRESULT_SUCCESS;
 }
 
-H2OK_API H2OKResult RunHook(PH2OKContext context, H2OKRunHookCallback callback) {
-    if (H2OKNULL(context)) return H2OKRESULT_FAILURE;
 
-    if (H2OKNULL(callback)) return H2OKRESULT_FAILURE;
+
+
+
+
+H2OK_API H2OKResult RunHook(PH2OKContext context) {
+    if (H2OKNULL(context)) return H2OKRESULT_FAILURE;
 
     WIN32_CODE(
         H2OKContext_Platform_Win32 * ctx = reinterpret_cast<H2OKContext_Platform_Win32*>(context);
-     
+        MSG msg;
+        while (GetMessage(&msg, NULL, 0, 0) > 0)
+        {
+            TranslateMessage(&msg);
+            DispatchMessage(&msg);
+        }
     );
 
-    std::list<int> what;
-    
-   
 
     return H2OKRESULT_SUCCESS;
 }
@@ -219,6 +255,16 @@ H2OK_API H2OKResult RegisterH2OKRunHookCallback(PH2OKRunHookCallbackRegistrar pR
 
 
 H2OK_API H2OKResult DeleteH2OKRunHookCallback(PH2OKRunHookCallbackRegistrar, H2OKRunHookCallback) {
+
+    return H2OKRESULT_SUCCESS;
+}
+
+H2OK_API H2OKResult SetCurrentContext(PH2OKRunHookCallbackRegistrar pRegistrar, PH2OKContext pContext) {
+    if (H2OKNULL(pRegistrar) || H2OKNULL(pContext)) return H2OKRESULT_FAILURE;
+
+    auto InteralRegistrar = reinterpret_cast<H2OKRunHookCallbackRegistrar_Internal*>(pRegistrar);
+
+    InteralRegistrar->GlobalContext = pContext;
 
     return H2OKRESULT_SUCCESS;
 }

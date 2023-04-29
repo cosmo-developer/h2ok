@@ -30,7 +30,7 @@ H2OK_API H2OKResult RegisterH2OKRunHookCallback(PH2OKRunHookCallbackRegistrar, H
 H2OK_API H2OKResult DeleteH2OKRunHookCallback(PH2OKRunHookCallbackRegistrar, H2OKRunHookCallback);
 
 H2OK_API H2OKResult CreateContext(LPH2OKContext);
-H2OK_API H2OKResult RunHook(PH2OKContext, H2OKRunHookCallback);
-H2OK_API H2OKResult DestroyContext(PH2OKContext);
+H2OK_API H2OKResult RunHook(PH2OKContext);
+H2OK_API H2OKResult DestroyContext(PH2OKRunHookCallbackRegistrar);
 H2OK_API H2OKResult SetCurrentContext(PH2OKRunHookCallbackRegistrar,PH2OKContext);
 

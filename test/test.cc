@@ -27,7 +27,16 @@ int main(const int argc, const char** argv) {
 		return -4;
 	}
 
-	if (H2OKFAILED(RegisterH2OKRunHookCallback(registrar, [](PH2OKContext context)-> void{}))) {
+	if (H2OKFAILED(RegisterH2OKRunHookCallback(registrar, [](PH2OKContext context)-> void{
+		std::cout << "Hello World!" << std::endl;
+		H2OKRunHookCallbackRegistrar* registrar = nullptr;
+
+		if (H2OKFAILED(GetDefaultH2OKRunHookCallbackRegistrar(&registrar))) {
+			PostQuitMessage(0);
+		}
+
+		DestroyContext(registrar);
+	}))) {
 		return -7;
 	}
 	if (H2OKFAILED(RegisterH2OKRunHookCallback(registrar, [](PH2OKContext context)-> void {}))) {
@@ -52,7 +61,11 @@ int main(const int argc, const char** argv) {
 		return -9;
 	}
 
+	if (H2OKFAILED(SetCurrentContext(registrar, Context))) {
+		return -10;
+	}
 
+	RunHook(Context);
 
 	return 0;
 }
