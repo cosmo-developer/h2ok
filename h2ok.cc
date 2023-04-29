@@ -5,8 +5,13 @@
 
 
 struct H2OKRunHookCallbackRegistrar_Internal : public H2OKRunHookCallbackRegistrar {
+    PH2OKContext GlobalContext;
     std::list<H2OKRunHookCallback> callbacks;
+
+    static H2OKRunHookCallbackRegistrar* GlobalRegistrar;
 };
+
+H2OKRunHookCallbackRegistrar* H2OKRunHookCallbackRegistrar_Internal::GlobalRegistrar = nullptr;
 
 #if defined(WIN32) || defined(_WIN32) || defined(__WIN32__) || defined(__NT__)
 #include <Windows.h>
@@ -118,12 +123,102 @@ H2OK_API H2OKResult RunHook(PH2OKContext context, H2OKRunHookCallback callback) 
     WIN32_CODE(
         H2OKContext_Platform_Win32 * ctx = reinterpret_cast<H2OKContext_Platform_Win32*>(context);
      
-        
     );
 
     std::list<int> what;
     
    
+
+    return H2OKRESULT_SUCCESS;
+}
+
+
+
+
+H2OK_API H2OKResult GetDefaultH2OKRunHookCallbackRegistrar(LPH2OKRunHookCallbackRegistrar lpRegistrar) {
+    if (H2OKFAILED(H2OKNULL(H2OKRunHookCallbackRegistrar_Internal::GlobalRegistrar))) {
+        *lpRegistrar = H2OKRunHookCallbackRegistrar_Internal::GlobalRegistrar;
+        return H2OKRESULT_SUCCESS;
+    }
+
+    H2OKRunHookCallbackRegistrar_Internal::GlobalRegistrar = new H2OKRunHookCallbackRegistrar_Internal;
+    
+    //Checking that properly intialized or stay null Rarest case check
+    if (H2OKNULL(H2OKRunHookCallbackRegistrar_Internal::GlobalRegistrar)) return H2OKRESULT_FAILURE;
+
+
+    *lpRegistrar = H2OKRunHookCallbackRegistrar_Internal::GlobalRegistrar;
+
+    return H2OKRESULT_SUCCESS;
+}
+
+
+
+H2OK_API H2OKResult GetH2OKRunHookCallbackRegistrarCount(PH2OKRunHookCallbackRegistrar pRegistrar, int* pInt) {
+    if (H2OKNULL(pRegistrar)) return H2OKRESULT_FAILURE;
+    
+    auto InternalRegistrar = reinterpret_cast<H2OKRunHookCallbackRegistrar_Internal*>(pRegistrar);
+
+    *pInt = InternalRegistrar->callbacks.size();
+
+    return H2OKRESULT_SUCCESS;
+}
+
+
+
+H2OK_API H2OKResult GetH2OKRunHookCallback(PH2OKRunHookCallbackRegistrar pRegistrar, int Index, H2OKRunHookCallback* pCallback) {
+
+    int count;
+
+    if (H2OKFAILED(GetH2OKRunHookCallbackRegistrarCount(pRegistrar, &count))) {
+        return H2OKRESULT_FAILURE;
+    }
+
+    if (Index >= count ||  Index < 0) {
+        return H2OKRESULT_FAILURE;
+    }
+
+    auto InternalRegistrar = reinterpret_cast<H2OKRunHookCallbackRegistrar_Internal*>(pRegistrar);
+
+
+    auto iterator=InternalRegistrar->callbacks.begin();
+
+    std::advance(iterator, Index);
+
+    if (H2OKNULL(*iterator)) return H2OKRESULT_FAILURE;
+
+    *pCallback = *iterator;
+
+    std::advance(iterator, 0);
+
+    return H2OKRESULT_SUCCESS;
+
+}
+
+
+
+
+H2OK_API H2OKResult RegisterH2OKRunHookCallback(PH2OKRunHookCallbackRegistrar pRegistrar, H2OKRunHookCallback callback) {
+    if (H2OKNULL(callback) || H2OKNULL(pRegistrar)) return H2OKRESULT_FAILURE;
+
+
+    auto InternalRegistrar = reinterpret_cast<H2OKRunHookCallbackRegistrar_Internal*>(pRegistrar);
+
+    for (auto callbck : InternalRegistrar->callbacks) {
+        if (H2OKSAME(callbck, callback)) return H2OKRESULT_FAILURE;
+    }
+
+    InternalRegistrar->callbacks.push_back(callback);
+
+    std::cout << "Adding Callback" << (InternalRegistrar->callbacks.size()) << std::endl;
+
+    return H2OKRESULT_SUCCESS;
+}
+
+
+
+
+H2OK_API H2OKResult DeleteH2OKRunHookCallback(PH2OKRunHookCallbackRegistrar, H2OKRunHookCallback) {
 
     return H2OKRESULT_SUCCESS;
 }
